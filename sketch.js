@@ -1,7 +1,8 @@
+var strokeW = 2; // how thick our lines are going to be
 function setup() {
     createCanvas(840, 480);
     background(50);
-    strokeWeight(2);
+    strokeWeight(strokeW);
     medicine = []; // array for all medecin placements
     r = 0;
     g = 255;
@@ -12,25 +13,27 @@ function setup() {
 var w= 30; // width of medicine
 var h = w; // height of medicine
 var boxBeingDragged = false; // is a box being dragged right now
-var currentBox = -1; // which box is being dragged right now
-var boxLineMargin = 50;
-var margin = 50;
+var currentBoxID = -1; // which box is being dragged right now
+var boxLineMargin = 50; // margin from med box to the right side line
+var margin = 50; // margins overall between stuff
 
 function draw() {
     background(50);
     if (boxBeingDragged) {
 	console.log("boxBeingDragged");
-	medicine[currentBox].x = mouseX;
-	medicine[currentBox].y = mouseY;
-    }
+	getBoxWithID(currentBoxID).setX(mouseX);
+	getBoxWithID(currentBoxID).setY(mouseY);
+    } // FIX HERE somewhere, the drawArea thingie does not work as intended yet
 
     for (var i in medicine) {
 	element = medicine[i];
+	drawArea(element);
 	stroke(element.r,element.g,element.b);
 	line(element.x+w+boxLineMargin, height, element.x+w+boxLineMargin, 0); 
 	drawMedicine(element);
-	drawPic(element);
-	drawInfo1(element);
+//	drawPic(element);
+//	drawInfo1(element);
+
     } 
 }
 
@@ -49,12 +52,10 @@ function mousePressed() {
 	rect(x, y, w, h);
 	
 	// data pushed on is of format {x,y, color}
-	medicine.push(createMed(x,y,r,g,b))
+	addMed(x,y,r,g,b);
     } else {
-	currentBox  = findBox(x,y);
-	console.log("currentBox is:" + currentBox);
+	currentBoxID  = findBox(x,y);
 	boxBeingDragged = true;
-	console.log(boxBeingDragged);
     }
 }
 
@@ -62,7 +63,7 @@ function mouseReleased() {
     boxBeingDragged = false;
 }
 
-// returns -1 if it does not find anything, otherwise returns index
+// returns -1 if it does not find anything, otherwise returns the ID of the box
 function findBox(x,y) {
     for (var i in medicine) {
 	element = medicine[i];
@@ -71,7 +72,7 @@ function findBox(x,y) {
 	
 	//approximative calculation on if we are at the current box
 	if (dist(x, y, boxX, boxY) < w)  {
-	    return i;
+	    return medicine[i].ID;
 	}
     } 
     return -1;
@@ -85,6 +86,12 @@ function isThereMedicine(x,y) {
     return false
 }
 
+// draws the area corresponding to a med box where info can be printed
+function drawArea(element) {
+    fill(element.r, element.g, element,b, 5);
+    rect(element.borderLeft, 0, element.borderRight-element.borderLeft, height);
+}
+
 // draws a single medicine box
 function drawMedicine(element) {
     var x = element.x;
@@ -94,7 +101,6 @@ function drawMedicine(element) {
     var b = element.b;
     stroke(0);
     fill(r,g,b);
-    console.log("x: ", x, "y: ", y);
     rect(x,y,w,h);
 }
 
@@ -113,7 +119,7 @@ function drawPic(element) {
 //    var newY = (y - map(y,0,height,0,y))
     var newY = margin;
     var newX = margin;
-    var picW = map(x,0,width,0,x)/10 + margin;
+    var picW = map(x,element.borderLeft,width,element.borderLeft,x)/10 + margin;
     var picH = map(x,0,width,0,x)/10 + margin;
     rect(newX,newY,picW,picH);
 }
@@ -132,7 +138,10 @@ function drawInfo1(element) {
 // have towards the next vertical line created by other medicine.
 //    var newX = x - map(x,0,width,0,x);
 //    var newY = (y - map(y,0,height,0,y))
-    var picW = map(x,0,width,0,x)/10 + margin;
+    var areaW = (x-element.borderLeft);
+    var picW =  areaW*0.2 + 30;
+
+//    var picW = map(x,element.borderLeft,width,element.borderLeft,x)/10 + margin;
     var picH = map(x,0,width,0,x)/10 + margin;
 
     var infoX = picW + margin*2;
@@ -149,42 +158,71 @@ function drawInfo1(element) {
     rect(infoX,infoY,infoW,infoH);
 }
 
-
-// takes x,y and a color array = [r,g,b]
-function createMed(x,y,color) {
-    return {x:x,
-	    y:y,
-	    r:color[0],
-	    g:color[1],
-	    b:color[2]};
-}
+var medGlobalIndex = 0; // used to give every box a unique index
 
 function createMed(x,y,r,g,b) {
-    return {x:x,
+    medGlobalIndex++;
+    med = {x:x,
 	    y:y,
 	    r:r,
 	    g:g,
-	    b:b,};
+	    b:b,
+	    borderRight:x+margin, // specifies where its area ends to the right
+	    borderLeft: -1, // obviously a bad number, but updateMed will fix this
+	    ID: medGlobalIndex,
+	    setX: function(x) { // if everybody uses .setX() instead of .x everything should be fine
+		this.x = x;		
+		updateMeds();
+	    },
+	    setY: function(y) {
+		this.y = y;		
+		updateMeds();
+	    },
+	   };
+    return med;
 }
 
+function addMed(x,y,r,g,b) {
+    medicine.push(createMed(x,y,r,g,b))
+    updateMeds(); // make sure its correctly put in and that borderLeft is set
+}
+
+//a med has been updated so we need to make sure the medicine array is correctly sorted
+function updateMeds() {
+    // sort in acending order so leftmost element first.
+    medicine.sort(function(a, b){
+	// Compare the 2 x-positions
+	if(a.x < b.x) return -1;
+	if(a.x > b.x) return 1;
+	return 0;
+    });
+//  console.log("updateMeds, this is all meds: ", medicine);
+    for (var i in medicine) {
+	if (i == 0)
+	    medicine[i].borderLeft = 0; // TODO - this should be set to some margin instead so we dont hit the wall
+	else
+	    medicine[i].borderLeft = medicine[i-1].x + strokeW // + strokeW so we dont draw over previous lines;
+    } // TODO FIX HERE - check if the fault is somewhere here
+}
+
+
+/* This function is used for getting a specific box from the medicine array. This is needed
+since we sort the array frequently and as such the indexes cannot be trusted nor reused*/
+function getBoxWithID(id) {
+    for (var i in medicine) {
+	if (medicine[i].ID === id)
+	    return medicine[i];
+    }
+    return null;
+}
 
 
 
 // TODO
 /* 
-1: make a struct out of the elements in the medicine array
-2: make sure every element can somehow figure out/know how far too the left it can go
+2: make sure every element can somehow figure out/know how far to the left it can go
 3: split the x-position of the box from the line. That way we can have a "stop" on a min distance so that we are never too close to another border to the left. OR we might want to make the whole area disapear for a med if its too close to some other med to the left.
 
 
 */
-
-/*
-create function that makes a thingie like this later
-var person = {
-    firstName:"John",
-    lastName:"Doe",
-    age:50,
-    eyeColor:"blue"
-}; */
 
