@@ -20,7 +20,7 @@ var margin = 50; // margins overall between stuff
 function draw() {
     background(50);
     if (boxBeingDragged) {
-	console.log("boxBeingDragged");
+//	console.log("boxBeingDragged");
 	getBoxWithID(currentBoxID).setX(mouseX);
 	getBoxWithID(currentBoxID).setY(mouseY);
     } // FIX HERE somewhere, the drawArea thingie does not work as intended yet
@@ -28,10 +28,10 @@ function draw() {
     for (var i in medicine) {
 	element = medicine[i];
 	drawArea(element);
-	stroke(element.r,element.g,element.b);
-	line(element.x+w+boxLineMargin, height, element.x+w+boxLineMargin, 0); 
+//	stroke(element.r,element.g,element.b);
+//	line(element.x+w+boxLineMargin, height, element.x+w+boxLineMargin, 0); 
 	drawMedicine(element);
-//	drawPic(element);
+	drawPic(element);
 //	drawInfo1(element);
 
     } 
@@ -88,39 +88,32 @@ function isThereMedicine(x,y) {
 
 // draws the area corresponding to a med box where info can be printed
 function drawArea(element) {
-    fill(element.r, element.g, element,b, 5);
+    fill(element.r, element.g, element.b, 50);
     rect(element.borderLeft, 0, element.borderRight-element.borderLeft, height);
 }
 
 // draws a single medicine box
 function drawMedicine(element) {
+    fill(element.r, element.g, element.b);
     var x = element.x;
     var y = element.y;
-    var r = element.r;
-    var g = element.g;
-    var b = element.b;
     stroke(0);
-    fill(r,g,b);
     rect(x,y,w,h);
 }
 
 // draws a picture of the medicine box
 function drawPic(element) {
+    var standardSize = 50;
     var x = element.x;
     var y = element.y;
-    var r = element.r;
-    var g = element.g;
-    var b = element.b;
     stroke(0);
-    fill(r,g,b,20); // the pic is somewhat transparent
-// add the two lines below in some way when we have fixed so we know how much space we
-// have towards the next vertical line created by other medicine.
-//    var newX = x - map(x,0,width,0,x);
-//    var newY = (y - map(y,0,height,0,y))
+    fill(element.r, element.g, element.b, 20);  // the pic is somewhat transparent
     var newY = margin;
-    var newX = margin;
-    var picW = map(x,element.borderLeft,width,element.borderLeft,x)/10 + margin;
-    var picH = map(x,0,width,0,x)/10 + margin;
+    var newX = margin + element.borderLeft;
+
+    var picH = standardSize*map(x, 0, width, 1, 2);
+    var picW = picH;
+//    var picH = map(x,0,width,element.borderLeft,x)/10 + margin;
     rect(newX,newY,picW,picH);
 }
 
@@ -129,27 +122,20 @@ function drawPic(element) {
 function drawInfo1(element) {
     var x = element.x;
     var y = element.y;
-    var r = element.r;
-    var g = element.g;
-    var b = element.b;
     stroke(0);
-    fill(r,g,b,20); // the pic is somewhat transparent
-// add the two lines below in some way when we have fixed so we know how much space we
-// have towards the next vertical line created by other medicine.
-//    var newX = x - map(x,0,width,0,x);
-//    var newY = (y - map(y,0,height,0,y))
+    fill(element.r, element.g, element.b, 20);
     var areaW = (x-element.borderLeft);
-    var picW =  areaW*0.2 + 30;
+//    var picW =  areaW*0.2 + 30;
 
-//    var picW = map(x,element.borderLeft,width,element.borderLeft,x)/10 + margin;
+    var picW = map(x,element.borderLeft,width,element.borderLeft,x)/10 + margin;
     var picH = map(x,0,width,0,x)/10 + margin;
 
-    var infoX = picW + margin*2;
+    var infoX = element.borderLeft + margin*2;
     var infoY = margin;
     var infoW = x - infoX;
     var infoH = picH;
     
-    if (infoW < 200) {
+    if (infoW < 300) {
 	infoW = infoW + infoX; // add the previous X-pos
 	infoY = infoX; // infoY is previous x-pos
 	infoX = margin; // new X is below pic
@@ -167,7 +153,7 @@ function createMed(x,y,r,g,b) {
 	    r:r,
 	    g:g,
 	    b:b,
-	    borderRight:x+margin, // specifies where its area ends to the right
+	    borderRight:x+w+margin, // specifies where its area ends to the right
 	    borderLeft: -1, // obviously a bad number, but updateMed will fix this
 	    ID: medGlobalIndex,
 	    setX: function(x) { // if everybody uses .setX() instead of .x everything should be fine
@@ -198,10 +184,19 @@ function updateMeds() {
     });
 //  console.log("updateMeds, this is all meds: ", medicine);
     for (var i in medicine) {
+	medicine[i].borderRight = medicine[i].x + w + margin;
 	if (i == 0)
 	    medicine[i].borderLeft = 0; // TODO - this should be set to some margin instead so we dont hit the wall
 	else
-	    medicine[i].borderLeft = medicine[i-1].x + strokeW // + strokeW so we dont draw over previous lines;
+	    medicine[i].borderLeft = medicine[i-1].x + w + margin // +
+								  // strokeW
+								  // so
+								  // we
+								  // dont
+								  // draw
+								  // over
+								  // previous
+								  // lines;
     } // TODO FIX HERE - check if the fault is somewhere here
 }
 
